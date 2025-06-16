@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Ký số RSA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* Xanh lá cây */
+            --primary-hover-color: #45a049;
+            --secondary-color: #007bff; /* Xanh dương */
+            --secondary-hover-color: #0056b3;
+            --background-light: #f8f9fa;
+            --background-white: #ffffff;
+            --border-color: #e9ecef;
+            --text-dark: #343a40;
+            --text-muted: #6c757d;
+            --success-bg: #d4edda;
+            --success-text: #155724;
+            --success-border: #c3e6cb;
+            --danger-bg: #f8d7da;
+            --danger-text: #721c24;
+            --danger-border: #f5c6cb;
+            --warning-bg: #fff3cd;
+            --warning-text: #856404;
+            --warning-border: #ffeeba;
+            --shadow-light: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-medium: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            margin: 30px auto;
+            background-color: var(--background-white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-medium);
+            padding: 30px;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .section {
+            margin-bottom: 35px;
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: var(--shadow-light);
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 22px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            text-decoration: none; /* For download links */
+        }
+        .button:hover {
+            background-color: var(--primary-hover-color);
+            transform: translateY(-1px);
+        }
+        .button:active {
+            transform: translateY(0);
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: #fff;
+            margin-right: 15px;
+            flex-grow: 1; /* Allow it to take available space */
+            width: auto; /* Override default width */
+        }
+        input[type="file"]::file-selector-button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--secondary-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: var(--secondary-hover-color);
+        }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+        form p {
+            width: 100%; /* Ensure paragraphs take full width in forms */
+            margin-bottom: 10px;
+        }
+        form label {
+            font-weight: 500;
+            color: var(--text-dark);
+            min-width: 120px; /* Align labels */
+        }
+        form input[type="file"] {
+            flex-grow: 1;
+        }
+
+        p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        a:hover {
+            color: var(--secondary-hover-color);
+            text-decoration: underline;
+        }
+
+        .flash-message {
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95em;
+            text-align: center;
+        }
+        .flash-message.success {
+            background-color: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success-border);
+        }
+        .flash-message.danger {
+            background-color: var(--danger-bg);
+            color: var(--danger-text);
+            border: 1px solid var(--danger-border);
+        }
+        .flash-message.warning {
+            background-color: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
+        }
+
+        .result-item {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start; /* Align icon to top if text wraps */
+            gap: 12px;
+            font-size: 0.95em;
+        }
+        .result-item strong {
+            min-width: 100px; /* Adjust as needed */
+            color: var(--text-dark);
+        }
+        .icon {
+            font-size: 1.3em;
+            color: var(--text-muted);
+            line-height: 1; /* Align icon better */
+        }
+        .valid-sig {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .invalid-sig {
+            color: var(--danger-text);
+            font-weight: 600;
+        }
+
+        h4 {
+            color: var(--secondary-color);
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+            .section {
+                padding: 15px;
+            }
+            h2 {
+                font-size: 1.8em;
+            }
+            .section-title {
+                font-size: 1.1em;
+            }
+            .button {
+                width: 100%;
+                text-align: center;
+            }
+            form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            form input[type="file"] {
+                margin-right: 0;
+                width: 100%;
+            }
+            form label {
+                min-width: unset;
+                width: 100%;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2><span role="img" aria-label="shield with lock">🔐</span> Ứng dụng Ký số RSA</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <p class="flash-message {{ category }}">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="section">
+            <div class="section-title"><span role="img" aria-label="key">🔑</span> 1. Tạo khóa RSA</div>
+            <form method="post">
+                <input type="hidden" name="action" value="generate_keys">
+                <button type="submit" class="button">Tạo khóa RSA</button>
+            </form>
+            {# Dòng thông báo khóa đã tạo/chưa tạo đã được chuyển vào flash messages #}
+        </div>
+
+        <div class="section">
+            <div class="section-title"><span role="img" aria-label="upload file">⬆️</span> 2. Tải lên file để ký</div>
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_and_sign">
+                <label for="fileInputSign">Chọn file gốc:</label>
+                <input type="file" name="file" id="fileInputSign" required>
+                <button type="submit" class="button">Ký số file</button>
+            </form>
+        </div>
+
+        {# PHẦN HIỂN THỊ FILE GỐC VÀ CHỮ KÝ SAU KHI KÝ #}
+        {% if signed_file_path and signature_path %}
+            <div class="section">
+                <div class="section-title"><span role="img" aria-label="document">📄</span> File đã ký và Chữ ký</div>
+                <p class="result-item">
+                    <span class="icon">📁</span> <strong>File gốc:</strong> <a href="{{ url_for('download_file', filename=signed_file_path) }}">{{ signed_file_path }}</a>
+                </p>
+                <p class="result-item">
+                    <span class="icon">✍️</span> <strong>Chữ ký (.sig):</strong> <a href="{{ url_for('download_file', filename=signature_path) }}">{{ signature_path }}</a>
+                </p>
+            </div>
+        {% endif %}
+
+        {# PHẦN KẾT QUẢ XÁC THỰC CHỮ KÝ SAU KHI KÝ #}
+        {% if signed_file_path and signature_path %}
+            <div class="section">
+                <div class="section-title"><span role="img" aria-label="check mark">✅</span> Kết quả xác thực chữ ký (sau khi ký)</div>
+                <p class="result-item">
+                    <span class="icon">🔍</span>
+                    {% if verify_result == '✅ Chữ ký hợp lệ.' %}
+                        <span class="valid-sig">{{ verify_result }}</span>
+                    {% else %}
+                        <span class="invalid-sig">{{ verify_result }}</span>
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+
+        {# PHẦN MỚI: NHẬN VÀ XÁC MINH FILE ĐỘC LẬP #}
+        <div class="section">
+            <div class="section-title"><span role="img" aria-label="magnifying glass">🔎</span> 3. Nhận và Xác minh File</div>
+
+            {# TỰ ĐỘNG HIỂN THỊ LIÊN KẾT TẢI VỀ NẾU VỪA KÝ THÀNH CÔNG VÀ HỢP LỆ #}
+            {% if signed_file_path and signature_path and verify_result == '✅ Chữ ký hợp lệ.' %}
+                <h4>Bạn có thể tải về các file vừa ký:</h4>
+                <p class="result-item">
+                    <span class="icon">⬇️</span> <strong>Tải File gốc:</strong> <a href="{{ url_for('download_file', filename=signed_file_path) }}">{{ signed_file_path }}</a>
+                </p>
+                <p class="result-item" style="margin-bottom: 20px;">
+                    <span class="icon">⬇️</span> <strong>Tải Chữ ký (.sig):</strong> <a href="{{ url_for('download_file', filename=signature_path) }}">{{ signature_path }}</a>
+                </p>
+                <p>Sau khi tải về, bạn có thể chọn lại chúng bên dưới để xác minh độc lập:</p>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_and_verify">
+                <p>
+                    <label for="originalFileToVerify">Chọn file gốc:</label>
+                    <input type="file" name="original_file_to_verify" id="originalFileToVerify" required>
+                </p>
+                <p>
+                    <label for="signatureFileToVerify">Chọn file chữ ký (.sig):</label>
+                    <input type="file" name="signature_file_to_verify" id="signatureFileToVerify" required>
+                </p>
+                <button type="submit" class="button">Xác minh File</button>
+            </form>
+
+            {# HIỂN THỊ KẾT QUẢ XÁC MINH RIÊNG BIỆT #}
+            {% if separate_verify_result %}
+                <h4>Kết quả xác minh:</h4>
+                <p class="result-item">
+                    <span class="icon">📄</span> <strong>File gốc đã tải lên:</strong> {{ verify_uploaded_filename }}
+                </p>
+                <p class="result-item">
+                    <span class="icon">📝</span> <strong>File chữ ký (.sig) đã tải lên:</strong> {{ verify_uploaded_sig_filename }}
+                </p>
+                <p class="result-item">
+                    <span class="icon">🔍</span>
+                    {% if separate_verify_result == '✅ Chữ ký hợp lệ.' %}
+                        <span class="valid-sig">{{ separate_verify_result }}</span>
+                    {% else %}
+                        <span class="invalid-sig">{{ separate_verify_result }}</span>
+                    {% endif %}
+                </p>
+            {% elif request.method == 'POST' and request.form.get('action') == 'upload_and_verify' %}
+                 <p style="margin-top: 20px;">Vui lòng chọn cả file gốc và file chữ ký để xác minh.</p>
+            {% endif %}
+        </div>
+
+        {# Hiển thị thông báo nếu chưa tạo khóa RSA - Sẽ vẫn giữ lại cảnh báo này ở cuối trang #}
+        {% if not key_generated %}
+             <div class="section">
+                <p>Vui lòng tạo khóa RSA trước khi thực hiện các thao tác ký số hoặc xác minh.</p>
+            </div>
+        {% endif %}
+
+    </div>
+</body>
+</html>

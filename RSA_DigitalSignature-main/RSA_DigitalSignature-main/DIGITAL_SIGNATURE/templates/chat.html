@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phòng Chat Chia Sẻ File Ký số</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* Xanh lá cây */
+            --secondary-color: #007bff; /* Xanh dương */
+            --background-light: #f0f2f5;
+            --background-white: #ffffff;
+            --border-color: #dee2e6;
+            --text-dark: #343a40;
+            --text-muted: #6c757d;
+            --chat-bubble-sender: #e2e6ea;
+            --chat-bubble-receiver: #d1ecf1;
+            --shadow-light: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-light);
+            color: var(--text-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            background-color: var(--background-white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2em;
+            font-weight: 500;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message-bubble {
+            background-color: var(--chat-bubble-sender);
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+            line-height: 1.5;
+            box-shadow: var(--shadow-light);
+            align-self: flex-start; /* For received messages */
+        }
+        .message-bubble.sent {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end; /* For sent messages */
+        }
+        .message-bubble.system {
+            text-align: center;
+            background-color: transparent;
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            max-width: 100%;
+            align-self: center;
+            box-shadow: none;
+        }
+        .message-bubble .sender-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            color: var(--secondary-color); /* Default color for sender */
+        }
+        .message-bubble.sent .sender-name {
+            color: white; /* White for sender in sent messages */
+        }
+        .message-bubble .message-text {
+            color: var(--text-dark);
+        }
+        .message-bubble.sent .message-text {
+            color: white;
+        }
+
+        .file-share-message { /* This style is for old system messages, might not be used now */
+            background-color: #d1ecf1; /* Light blue for file info message */
+            border: 1px solid #bee5eb;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            align-self: center;
+            width: fit-content;
+            text-align: center;
+        }
+        .file-share-message .file-share-text {
+            font-weight: bold;
+            color: #0c5460;
+            margin-bottom: 5px;
+        }
+        .file-share-message a {
+            color: #007bff;
+            text-decoration: none;
+            display: block;
+            margin-top: 3px;
+        }
+        .file-share-message a:hover {
+            text-decoration: underline;
+        }
+
+        .attachment-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 5px 10px; /* Adjusted padding */
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            align-items: center; /* Vertically align items */
+        }
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            background-color: #cce5ff;
+            border: 1px solid #b8daff;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            color: #004085;
+        }
+        .attachment-item .file-icon {
+            margin-right: 5px;
+        }
+        .attachment-item .remove-attachment {
+            margin-left: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #004085;
+            transition: color 0.2s;
+        }
+        .attachment-item .remove-attachment:hover {
+            color: #856404; /* Darker yellow on hover */
+        }
+        .attached-files-in-message {
+            margin-top: 10px; /* Space between text and attached files in message bubble */
+            border-top: 1px solid rgba(255,255,255,0.3);
+            padding-top: 5px;
+        }
+        .attached-files-in-message a {
+            display: block;
+            color: inherit; /* Inherit color from message bubble */
+            text-decoration: none;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+        }
+        .message-bubble.sent .attached-files-in-message a {
+            color: white;
+        }
+        .attached-files-in-message a:hover {
+            text-decoration: underline;
+        }
+
+
+        .chat-input {
+            display: flex;
+            flex-direction: column; /* Cho phép các phần tử con xếp theo chiều dọc */
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--background-white);
+        }
+
+        .chat-input-row {
+            display: flex;
+            width: 100%;
+            margin-top: 10px; /* Khoảng cách giữa attachment preview và input */
+        }
+        .chat-input input[type="text"] {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            outline: none;
+            font-size: 1em;
+            margin-right: 10px;
+        }
+        #usernameInput {
+            margin-bottom: 10px; /* Khoảng cách giữa ô tên và các phần tử khác */
+        }
+
+        .chat-input button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+
+        .chat-input button:hover {
+            background-color: #45a049;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 95vh;
+                margin: 0 10px;
+            }
+            .chat-messages {
+                padding: 15px;
+            }
+            .chat-input {
+                padding: 10px 15px;
+            }
+            .chat-input input[type="text"] {
+                padding: 8px 12px;
+            }
+            .chat-input button {
+                padding: 8px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Phòng Chat Chia Sẻ File Ký số
+        </div>
+        <div class="chat-messages" id="messages">
+            </div>
+
+        <div class="chat-input">
+            <div class="form-group">
+                <input type="text" class="form-control" id="usernameInput" placeholder="Tên của bạn..." value="Người dùng ẩn danh">
+            </div>
+            <div id="attachmentPreview" class="attachment-preview" style="display:none;">
+                </div>
+            <div class="chat-input-row">
+                <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+                <button id="sendMessageButton">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io(); // Kết nối tới server SocketIO
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const usernameInput = document.getElementById('usernameInput');
+        const sendMessageButton = document.getElementById('sendMessageButton');
+        const attachmentPreview = document.getElementById('attachmentPreview');
+
+        let attachedFiles = []; // Mảng để lưu trữ các file đang được đính kèm
+
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Lắng nghe sự kiện 'connect' từ server
+        socket.on('connect', function() {
+            const systemMessage = document.createElement('div');
+            systemMessage.classList.add('message-bubble', 'system');
+            systemMessage.innerHTML = `<span class="message-text">Đã kết nối tới máy chủ chat.</span>`;
+            messagesDiv.appendChild(systemMessage);
+            scrollToBottom();
+        });
+
+        // Lắng nghe sự kiện 'message' từ server (tin nhắn chat thông thường)
+        socket.on('message', function(data) {
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+
+            if (data.sender === usernameInput.value.trim()) { // Nếu là tin nhắn của chính mình
+                messageBubble.classList.add('sent');
+            } else if (data.sender === 'Hệ thống') {
+                messageBubble.classList.add('system');
+                messageBubble.innerHTML = `<span class="message-text">${data.msg}</span>`;
+            } else {
+                messageBubble.innerHTML = `
+                    <div class="sender-name">${data.sender}:</div>
+                    <div class="message-text">${data.msg}</div>
+                `;
+            }
+
+            // Nếu có file kèm theo trong tin nhắn
+            if (data.files && data.files.length > 0) {
+                const fileContainer = document.createElement('div');
+                fileContainer.classList.add('attached-files-in-message');
+                data.files.forEach(file => {
+                    const fileLink = document.createElement('a');
+                    fileLink.href = file.url;
+                    fileLink.target = "_blank";
+                    fileLink.download = file.name;
+                    fileLink.textContent = `📎 ${file.name}`;
+                    fileContainer.appendChild(fileLink);
+                });
+                messageBubble.appendChild(fileContainer);
+            }
+            messagesDiv.appendChild(messageBubble);
+            scrollToBottom();
+        });
+
+        // Lắng nghe sự kiện 'file_shared' từ server
+        // Dữ liệu file được tự động thêm vào phần đính kèm
+        socket.on('file_shared', function(data) {
+            // Hiển thị thông báo file đã sẵn sàng trong chat
+            const systemFileReadyMessage = document.createElement('div');
+            systemFileReadyMessage.classList.add('message-bubble', 'system');
+            systemFileReadyMessage.innerHTML = `<span class="message-text">File đã được xác minh và sẵn sàng để bạn chia sẻ: ${data.original_file_name}, ${data.signature_file_name}</span>`;
+            messagesDiv.appendChild(systemFileReadyMessage);
+            scrollToBottom();
+
+            // Tự động thêm file gốc vào danh sách đính kèm
+            addAttachment({
+                name: data.original_file_name,
+                url: data.original_file_url,
+                type: 'original' // Phân biệt loại file
+            });
+
+            // Tự động thêm file chữ ký vào danh sách đính kèm
+            addAttachment({
+                name: data.signature_file_name,
+                url: data.signature_file_url,
+                type: 'signature' // Phân biệt loại file
+            });
+        });
+
+        // Hàm thêm file vào danh sách đính kèm
+        function addAttachment(fileData) {
+            // Kiểm tra xem file đã tồn tại trong danh sách đính kèm chưa
+            const exists = attachedFiles.some(f => f.name === fileData.name);
+            if (exists) {
+                console.log(`File ${fileData.name} đã được đính kèm.`);
+                return;
+            }
+
+            attachedFiles.push(fileData);
+            renderAttachments();
+        }
+
+        // Hàm xóa file khỏi danh sách đính kèm
+        function removeAttachment(fileName) {
+            attachedFiles = attachedFiles.filter(f => f.name !== fileName);
+            renderAttachments();
+        }
+
+        // Hàm render (hiển thị) lại các file đính kèm
+        function renderAttachments() {
+            attachmentPreview.innerHTML = ''; // Xóa các phần tử cũ
+            if (attachedFiles.length > 0) {
+                attachmentPreview.style.display = 'flex'; // Hiển thị khung preview
+                attachedFiles.forEach(file => {
+                    const attachmentItem = document.createElement('div');
+                    attachmentItem.classList.add('attachment-item');
+                    attachmentItem.innerHTML = `
+                        <span class="file-icon">📄</span> ${file.name}
+                        <span class="remove-attachment" data-filename="${file.name}">x</span>
+                    `;
+                    attachmentPreview.appendChild(attachmentItem);
+                });
+            } else {
+                attachmentPreview.style.display = 'none'; // Ẩn khung preview nếu không có file nào
+            }
+            // Thêm event listener cho nút xóa
+            attachmentPreview.querySelectorAll('.remove-attachment').forEach(button => {
+                button.addEventListener('click', function() {
+                    removeAttachment(this.dataset.filename);
+                });
+            });
+        }
+
+        // Gửi tin nhắn khi nhấn nút hoặc Enter
+        sendMessageButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            const username = usernameInput.value.trim() || 'Người dùng ẩn danh';
+
+            if (message || attachedFiles.length > 0) {
+                // Tạo một mảng chỉ chứa thông tin cần thiết của file để gửi đi
+                const filesToSend = attachedFiles.map(f => ({
+                    name: f.name,
+                    url: f.url
+                }));
+                socket.emit('send_message', {'message': message, 'sender': username, 'files': filesToSend});
+                messageInput.value = ''; // Xóa nội dung input sau khi gửi
+                attachedFiles = []; // Xóa các file đã đính kèm sau khi gửi
+                renderAttachments(); // Cập nhật giao diện đính kèm
+            }
+        }
+
+        // Khi người dùng nhập tên, lưu vào localStorage để dùng cho các phiên sau
+        usernameInput.value = localStorage.getItem('chat_username') || '';
+        usernameInput.addEventListener('input', function() {
+            localStorage.setItem('chat_username', usernameInput.value.trim());
+        });
+
+        // Khởi tạo hiển thị đính kèm khi tải trang
+        renderAttachments();
+    </script>
+</body>
+</html>
